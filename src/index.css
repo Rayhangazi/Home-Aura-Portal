@@ -1,0 +1,102 @@
+body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      min-height: 100vh;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    body.dark {
+      background-color: #0b0f19;
+      color: #f1f5f9;
+    }
+
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Tab Switch Micro-Interaction Pane Fade */
+    .pane-fade-enter-active {
+      animation: paneFadeIn 0.25s ease-out forwards;
+    }
+    @keyframes paneFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(8px);
+        filter: blur(4px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+      }
+    }
+
+    /* Modal Slide & Scale Animation */
+    .modal-anim-enter-active {
+      animation: modalSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .modal-anim-leave-active {
+      animation: modalSlide 0.2s ease-in reverse forwards;
+    }
+    @keyframes modalSlide {
+      0% {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    /* High-Alert Urgent Row Glow Animation */
+    .urgent-glow-row {
+      animation: urgentPulse 2s infinite ease-in-out;
+    }
+    @keyframes urgentPulse {
+      0%, 100% {
+        background-color: rgba(254, 226, 226, 0.6);
+        box-shadow: inset 3px 0 0 #ef4444;
+      }
+      50% {
+        background-color: rgba(254, 202, 202, 0.9);
+        box-shadow: inset 6px 0 0 #dc2626;
+      }
+    }
+
+    body.dark .urgent-glow-row {
+      animation: urgentPulseDark 2s infinite ease-in-out;
+    }
+    @keyframes urgentPulseDark {
+      0%, 100% {
+        background-color: rgba(127, 29, 29, 0.45);
+        box-shadow: inset 3px 0 0 #f87171;
+      }
+      50% {
+        background-color: rgba(153, 27, 27, 0.65);
+        box-shadow: inset 6px 0 0 #ef4444;
+      }
+    }

@@ -1,0 +1,2162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+  <title>HomeAura - Order Management Portal</title>
+  
+  <!-- Cloud CDNs for Portable Single-File App -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f3ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Vue 3 & JSZip from Cloud CDN -->
+  <script src="https://unpkg.com/vue@3.3.4/dist/vue.global.prod.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <link rel="stylesheet" href="/src/index.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-100 selection:text-indigo-700 transition-colors duration-200">
+
+  <div id="app" class="min-h-screen flex flex-col justify-between">
+    
+    <!-- LOGIN SCREEN -->
+    <div v-if="!currentUser" class="min-h-screen flex items-center justify-center p-4 bg-slate-900 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white relative overflow-hidden">
+      <!-- Decorative BG Glows -->
+      <div class="absolute -top-24 -left-24 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 rounded-2xl shadow-2xl relative z-10">
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 mb-4 shadow-inner">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          </div>
+          <h1 class="text-2xl font-bold tracking-tight text-white">HomeAura Order Management</h1>
+          <p class="text-xs text-slate-400 mt-1">Sign in to your operation terminal</p>
+        </div>
+
+        <form @submit.prevent="handleLogin" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Username</label>
+            <input v-model="loginForm.username" type="text" required placeholder="e.g. admin1 or seller1"
+                   class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Password</label>
+            <input v-model="loginForm.password" type="password" required placeholder="••••••••"
+                   class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all" />
+          </div>
+
+          <div v-if="loginError" class="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium flex items-center gap-2">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>{{ loginError }}</span>
+          </div>
+
+          <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition-all transform active:scale-[0.99] flex items-center justify-center gap-2">
+            <span>Authenticate</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- MAIN AUTHENTICATED SYSTEM PORTAL -->
+    <div v-else class="flex-1 flex flex-col">
+      <!-- Top Navigation Header -->
+      <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-xs transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <!-- Left Brand Identity -->
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-md shadow-indigo-200 dark:shadow-none">
+              HA
+            </div>
+            <div>
+              <div class="font-extrabold text-slate-900 dark:text-slate-100 tracking-tight text-base leading-tight flex items-center gap-2">
+                HomeAura
+                <span :class="currentUser.role === 'admin' ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'" class="px-2 py-0.5 text-[10px] uppercase font-bold rounded-full border">
+                  {{ currentUser.role }}
+                </span>
+              </div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Order Management Terminal</div>
+            </div>
+          </div>
+
+          <!-- Center Navigation Tabs -->
+          <nav class="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700">
+            <!-- Admin Navigation Tabs -->
+            <template v-if="currentUser.role === 'admin'">
+              <button @click="activeTab = 'dashboard'" :class="activeTab === 'dashboard' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium'" class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Analytics Dashboard
+              </button>
+              <button @click="activeTab = 'orders'" :class="activeTab === 'orders' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium'" class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Master Order Ledger
+              </button>
+              <button @click="activeTab = 'factories'" :class="activeTab === 'factories' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium'" class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                Factories & Priority
+              </button>
+              <button @click="activeTab = 'trash'" :class="activeTab === 'trash' ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium'" class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Trash
+              </button>
+              <button @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium'" class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Settings
+              </button>
+            </template>
+
+            <!-- Seller Navigation Tabs -->
+            <template v-else>
+              <button @click="activeTab = 'intake'" :class="activeTab === 'intake' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium'" class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Order Registration Terminal
+              </button>
+              <button @click="activeTab = 'my_orders'" :class="activeTab === 'my_orders' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-semibold' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 font-medium'" class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                My Submitted Logs ({{ myOrdersCount }})
+              </button>
+            </template>
+          </nav>
+
+          <!-- Right User Controls & Logout -->
+          <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Top Dark Mode Button -->
+            <button @click="toggleDarkMode" type="button" :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+                    class="px-3 py-1.5 rounded-xl border transition-all text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    :class="isDarkMode ? 'bg-slate-800 text-amber-300 border-slate-700 hover:bg-slate-700' : 'bg-slate-100 text-indigo-700 border-slate-200 hover:bg-indigo-50'">
+              <span v-if="isDarkMode" class="flex items-center gap-1">
+                <span>☀️</span>
+                <span class="hidden sm:inline">Light Mode</span>
+              </span>
+              <span v-else class="flex items-center gap-1">
+                <span>🌙</span>
+                <span class="hidden sm:inline">Dark Mode</span>
+              </span>
+            </button>
+
+            <div class="text-right hidden sm:block">
+              <div class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ currentUser.name }}</div>
+              <div class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">@{{ currentUser.username }}</div>
+            </div>
+            <button @click="handleLogout" title="Sign out" class="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-slate-200 dark:border-slate-700 transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Navigation Sub-bar -->
+        <div class="md:hidden flex overflow-x-auto p-2 gap-1 bg-slate-100 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+          <template v-if="currentUser.role === 'admin'">
+            <button @click="activeTab = 'dashboard'" :class="activeTab === 'dashboard' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-300'" class="px-3 py-1.5 rounded-lg text-xs whitespace-nowrap">Dashboard</button>
+            <button @click="activeTab = 'intake'" :class="activeTab === 'intake' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-300'" class="px-3 py-1.5 rounded-lg text-xs whitespace-nowrap">New Order</button>
+            <button @click="activeTab = 'orders'" :class="activeTab === 'orders' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-300'" class="px-3 py-1.5 rounded-lg text-xs whitespace-nowrap">Master Ledger</button>
+            <button @click="activeTab = 'factories'" :class="activeTab === 'factories' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-300'" class="px-3 py-1.5 rounded-lg text-xs whitespace-nowrap">Factories</button>
+            <button @click="activeTab = 'trash'" :class="activeTab === 'trash' ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-600 dark:text-slate-300'" class="px-3 py-1.5 rounded-lg text-xs whitespace-nowrap">Trash</button>
+            <button @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-300'" class="px-3 py-1.5 rounded-lg text-xs whitespace-nowrap">Settings</button>
+          </template>
+          <template v-else>
+            <button @click="activeTab = 'intake'" :class="activeTab === 'intake' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-300'" class="px-3 py-1.5 rounded-lg text-xs whitespace-nowrap">Order Intake</button>
+            <button @click="activeTab = 'my_orders'" :class="activeTab === 'my_orders' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-300'" class="px-3 py-1.5 rounded-lg text-xs whitespace-nowrap">My Logs ({{ myOrdersCount }})</button>
+          </template>
+        </div>
+      </header>
+
+      <!-- Main Body Container -->
+      <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- ==================== ADMIN: ANALYTICS DASHBOARD ==================== -->
+        <transition name="pane-fade" mode="out-in">
+          <div v-if="currentUser.role === 'admin' && activeTab === 'dashboard'" key="admin-dash" class="space-y-6">
+            
+            <!-- Top Dashboard Header & Export Button -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div>
+                <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Business Analytics & Metrics Desk</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Live Financial Overview & Seller Performance Tracking</p>
+              </div>
+              <button @click="exportCSV" class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/20 transition-all transform active:scale-95">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Export Order CSV
+              </button>
+              <button @click="exportLogsCSV" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-indigo-600/20 transition-all transform active:scale-95">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Export Audit Logs CSV
+              </button>
+            </div>
+
+            <!-- Financial Metrics Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Gross Income Revenue Card -->
+              <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Gross Income Revenue</span>
+                  <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                </div>
+                <div class="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{{ formatBDT(metrics.grossRevenue) }}</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1">
+                  <span class="text-emerald-600 dark:text-emerald-400 font-bold">Sales + Delivery</span> across {{ orders.length }} total orders
+                </div>
+              </div>
+
+              <!-- Delivered Products Revenue Card -->
+              <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Delivered Products Revenue</span>
+                  <div class="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                </div>
+                <div class="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{{ formatBDT(metrics.deliveredProductsRevenue) }}</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                  Net sales from delivered items (excl. delivery fees)
+                </div>
+              </div>
+
+              <!-- Total Order Count Card -->
+              <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Order Volume</span>
+                  <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                  </div>
+                </div>
+                <div class="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{{ orders.length }}</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-2">
+                  <span class="text-emerald-600 dark:text-emerald-400 font-semibold">{{ metrics.deliveredCount }} Delivered</span> • 
+                  <span class="text-amber-600 dark:text-amber-400 font-semibold">{{ metrics.pendingCount }} In-Pipeline</span>
+                </div>
+              </div>
+
+              <!-- Urgent Expedite High-Alert Count -->
+              <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-rose-200 dark:border-rose-800 shadow-xs relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Urgent Expedite Flag</span>
+                  <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center animate-pulse">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  </div>
+                </div>
+                <div class="text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">{{ metrics.urgentCount }}</div>
+                <div class="text-[11px] text-rose-500 dark:text-rose-400 font-medium mt-2">
+                  Requires Back-office priority expedite
+                </div>
+              </div>
+            </div>
+
+            <!-- Merchant Live Sales Performance vs Target Progress Bars -->
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Merchant Performance Progress Bars</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Live Sales Volume measured against assigned Target Goals</p>
+                </div>
+                <button @click="activeTab = 'users'" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                  Manage Targets &rarr;
+                </button>
+              </div>
+
+              <div class="space-y-5">
+                <div v-for="merchant in merchantStats" :key="merchant.username" class="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200/60 dark:border-slate-700">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center">
+                        {{ merchant.name.substring(0, 2).toUpperCase() }}
+                      </div>
+                      <div>
+                        <div class="text-xs font-bold text-slate-900 dark:text-slate-100">{{ merchant.name }} <span class="text-slate-400 font-normal">(@{{ merchant.username }})</span></div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">{{ merchant.totalOrders }} Orders Logged</div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-xs font-extrabold text-slate-900 dark:text-slate-100">{{ formatBDT(merchant.totalSales) }} <span class="text-slate-400 font-normal">/ {{ formatBDT(merchant.target) }}</span></div>
+                      <div class="text-[10px] font-bold" :class="merchant.percentage >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400'">
+                        {{ merchant.percentage }}% Target Achieved
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Progress Bar Track -->
+                  <div class="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-500"
+                         :class="merchant.percentage >= 100 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-indigo-500 to-indigo-600'"
+                         :style="{ width: Math.min(merchant.percentage, 100) + '%' }"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </transition>
+
+
+        <!-- ==================== ADMIN: MASTER ORDER LEDGER ==================== -->
+        <transition name="pane-fade" mode="out-in">
+          <div v-if="currentUser.role === 'admin' && activeTab === 'orders'" key="admin-orders" class="space-y-4">
+            
+            <!-- Controls Bar: Search & Filters -->
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+              <!-- Search Box -->
+              <div class="relative w-full md:w-80">
+                <svg class="w-4 h-4 absolute left-3 top-3 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input v-model="orderSearch" type="text" placeholder="Search customer, phone, code..."
+                       class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500" />
+              </div>
+
+              <!-- Filter Controls -->
+              <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <!-- Status Filter -->
+                <select v-model="statusFilter" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+                  <option value="ALL">All Statuses (8 Stages)</option>
+                  <option v-for="s in pipelineStages" :key="s" :value="s">{{ s }}</option>
+                </select>
+
+                <!-- Merchant Filter -->
+                <select v-model="merchantFilter" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+                  <option value="ALL">All Merchants</option>
+                  <option v-for="m in sellersList" :key="m.username" :value="m.name">{{ m.name }}</option>
+                </select>
+                
+                <!-- Factory Filter -->
+                <select v-model="factoryFilter" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+                  <option value="ALL">All Factories</option>
+                  <option v-for="f in factories" :key="f.id" :value="f.name">{{ f.name }}</option>
+                  <option value="">Unassigned</option>
+                </select>
+                <!-- Sort Dropdown -->
+                <select v-model="sortOption" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+                  <option value="NEWEST">Newest First</option>
+                  <option value="OLDEST">Oldest First</option>
+                  <option value="FACTORY">Submitted Factory (A-Z)</option>
+                </select>
+
+                <!-- Urgent Filter -->
+                <button @click="urgentOnly = !urgentOnly" :class="urgentOnly ? 'bg-rose-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'" class="px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 border border-transparent dark:border-slate-700">
+                  <span>🔥 Urgent Only</span>
+                </button>
+                <!-- Bulk Delete -->
+                <button v-if="selectedOrders.size > 0" @click="bulkDeleteSelected" class="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-md">
+                  🗑️ Void Selected ({{ selectedOrders.size }})
+                </button>
+              </div>
+            </div>
+
+            <!-- Ledger Table Container -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <th class="p-4 w-10 text-center">
+                        <input type="checkbox" 
+                               class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500/30 cursor-pointer"
+                               :checked="selectedOrders.size > 0 && selectedOrders.size === filteredOrders.length"
+                               @change="toggleAllSelection(filteredOrders)" />
+                      </th>
+                      <th class="p-4">Order ID & Timestamp</th>
+                      <th class="p-4">Merchant</th>
+                      <th class="p-4">Customer Details</th>
+                      <th class="p-4">Source & Code</th>
+                      <th class="p-4">Product & Config</th>
+                      <th class="p-4">Logistics</th>
+                      <th class="p-4 text-right">Pricing (BDT)</th>
+                      <th class="p-4">Pipeline Status</th>
+                      <th class="p-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                    <tr v-for="ord in filteredOrders" :key="ord.id"
+                        :class="[ord.urgent ? 'urgent-glow-row' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors', selectedOrders.has(ord.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/20' : '']">
+                      
+                      <!-- Bulk Select Checkbox -->
+                      <td class="p-4 w-10 text-center">
+                        <input type="checkbox" 
+                               class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500/30 cursor-pointer"
+                               :checked="selectedOrders.has(ord.id)"
+                               @change="toggleOrderSelection(ord.id)" />
+                      </td>
+                      
+                      <!-- Order ID & Timestamp -->
+                      <td class="p-4 whitespace-nowrap font-medium text-slate-900 dark:text-slate-100">
+                        <div class="font-bold flex items-center gap-1.5">
+                          <span>{{ ord.id }}</span>
+                          <span v-if="ord.urgent" class="px-1.5 py-0.5 text-[9px] bg-rose-600 text-white rounded font-extrabold uppercase animate-pulse">Urgent</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{{ ord.timestamp }}</div>
+                      </td>
+
+                      <!-- Merchant -->
+                      <td class="p-4 whitespace-nowrap">
+                        <span class="font-semibold text-slate-800 dark:text-slate-200">{{ ord.merchantName }}</span>
+                      </td>
+
+                      <!-- Customer Details -->
+                      <td class="p-4">
+                        <div class="font-bold text-slate-900 dark:text-slate-100">{{ ord.customerName }}</div>
+                        <div class="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">{{ ord.customerPhone }}</div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 max-w-xs" :title="ord.customerAddress">{{ ord.customerAddress }}</div>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                          <span v-if="ord.cnNumber" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-mono text-[9px] font-bold">CN: {{ ord.cnNumber }}</span>
+                          <span v-if="ord.invoiceNumber" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-mono text-[9px] font-bold">INV: {{ ord.invoiceNumber }}</span>
+                        </div>
+                      </td>
+
+                      <!-- Source & Code -->
+                      <td class="p-4 whitespace-nowrap">
+                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-mono text-[10px] font-bold">{{ ord.productCategory }}</span>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{{ ord.trafficSource }}</div>
+                      </td>
+
+                      <!-- Product & Config -->
+                      <td class="p-4">
+                        <div class="font-semibold text-slate-800 dark:text-slate-200">{{ ord.productCategory }}</div>
+                        <div class="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900 px-1.5 py-0.5 rounded inline-block mt-0.5 font-bold">{{ ord.seatConfig }}</div>
+                        
+                        <div class="mt-1 space-y-0.5">
+                          <div v-if="ord.collagePhotoUrl || ord.collagePhotoFileName" @click="openInspectModal(ord)" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold cursor-pointer hover:underline flex items-center gap-1">
+                            <span>🖼️ Collage:</span>
+                            <span class="font-mono text-[9px] font-normal truncate max-w-[110px]">{{ ord.collagePhotoFileName || 'Attached' }}</span>
+                          </div>
+                          <div v-if="ord.socialProofUrl || ord.socialProofFileName" @click="openInspectModal(ord)" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold cursor-pointer hover:underline flex items-center gap-1">
+                            <span>💬 Proof:</span>
+                            <span class="font-mono text-[9px] font-normal truncate max-w-[110px]">{{ ord.socialProofFileName || 'Attached' }}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- Logistics & Factory Tag -->
+                      <td class="p-4 whitespace-nowrap">
+                        <div class="text-[11px] font-medium text-slate-700 dark:text-slate-300">{{ ord.fulfillmentMethod }}</div>
+                        <div v-if="ord.factoryTag" class="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-900 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                          🏭 {{ ord.factoryTag }}
+                        </div>
+                        <div v-else class="text-[10px] text-slate-400 italic mt-0.5">Unassigned Factory</div>
+                      </td>
+
+                      <!-- Pricing -->
+                      <td class="p-4 whitespace-nowrap text-right">
+                        <div class="font-extrabold text-slate-900 dark:text-slate-100">{{ formatBDT(ord.totalAmount) }}</div>
+                        <div class="text-[10px] text-slate-400">Sale: {{ formatBDT(ord.saleAmount) }} | Del: {{ formatBDT(ord.deliveryCharge) }}</div>
+                      </td>
+
+                      <!-- Pipeline Status -->
+                      <td class="p-4 whitespace-nowrap">
+                        <select :value="ord.status" @change="quickStatusChange(ord, $event.target.value)"
+                                class="text-[11px] font-bold rounded-lg px-2.5 py-1.5 border transition-all cursor-pointer focus:outline-none block w-full"
+                                :class="getStatusStyle(ord.status)">
+                          <option v-for="s in pipelineStages" :key="s" :value="s">{{ s }}</option>
+                        </select>
+                      </td>
+
+                      <!-- Actions -->
+                      <td class="p-4 whitespace-nowrap text-center">
+                        <div class="flex items-center justify-center gap-1">
+                          <button @click="openInspectModal(ord)" title="Inspect All Details & Attachments" class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all text-xs font-bold flex items-center gap-1">
+                            👁️
+                          </button>
+                          <button @click="openCourierModal(ord)" title="Track Courier" class="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-all text-xs font-bold flex items-center gap-1">
+                            🚚
+                          </button>
+                          <button v-if="ord.collagePhotoUrl" @click="openPhotoModal(ord.collagePhotoUrl, ord.id)" title="View Collage Photo" class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 dark:border-indigo-800 transition-all">
+                            📷
+                          </button>
+                          <button @click="openDispatchModal(ord)" title="Dispatch to Factory via WhatsApp" class="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                          </button>
+                          <button @click="openEditOrderModal(ord)" title="Edit Order" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-600 dark:text-slate-300 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                          </button>
+                          <button @click="toggleUrgent(ord)" title="Toggle High Alert" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 text-slate-600 dark:text-slate-300 transition-all">
+                            <svg class="w-4 h-4" :class="ord.urgent ? 'text-rose-600 fill-rose-500' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                          </button>
+                          <button @click="confirmVoidOrder(ord)" title="Void / Delete" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-950 hover:text-rose-700 text-slate-500 dark:text-slate-400 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </div>
+                      </td>
+
+                    </tr>
+                    <tr v-if="filteredOrders.length === 0">
+                      <td colspan="9" class="p-8 text-center text-slate-400 font-medium">
+                        No orders match the specified filters.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </transition>
+
+
+        <!-- ==================== ADMIN: FACTORY NETWORK & PRIORITY DISPATCH ==================== -->
+        <transition name="pane-fade" mode="out-in">
+          <div v-if="currentUser.role === 'admin' && activeTab === 'factories'" key="admin-factories" class="space-y-6">
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-lg font-extrabold text-slate-900 dark:text-slate-100">Factory Priority & Network Management</h2>
+                  <span class="px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">Dynamic Score Engine</span>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Automatically ranks factories by fabric quality, stock availability, wholesale price, and pending order load penalty</p>
+              </div>
+              <button @click="openAddFactoryModal" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-all flex items-center gap-1.5 self-start md:self-auto">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                + Register New Factory
+              </button>
+            </div>
+
+            <!-- Priority Leaderboard Cards -->
+            <div class="space-y-4">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">🏆 Ranked Factory Priority List</h3>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div v-for="(f, idx) in rankedFactories" :key="f.id" class="bg-white dark:bg-slate-900 rounded-2xl border p-5 shadow-xs relative flex flex-col justify-between transition-all"
+                     :class="idx === 0 ? 'border-amber-300 ring-2 ring-amber-400/30' : 'border-slate-200/80 dark:border-slate-800'">
+                  
+                  <!-- Rank Badge -->
+                  <div>
+                    <div class="flex items-center justify-between mb-3">
+                      <div class="flex items-center gap-2">
+                        <span :class="idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-slate-700 dark:bg-slate-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'"
+                              class="w-7 h-7 rounded-lg text-xs font-extrabold flex items-center justify-center shadow-xs">
+                          #{{ idx + 1 }}
+                        </span>
+                        <div class="font-extrabold text-slate-900 dark:text-slate-100 text-base">{{ f.name }}</div>
+                      </div>
+                      <span :class="f.stockStatus === 'In Stock' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : f.stockStatus === 'Low Stock' ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' : 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'"
+                            class="px-2 py-0.5 text-[10px] font-bold rounded-full border">
+                        {{ f.stockStatus }}
+                      </span>
+                    </div>
+
+                    <!-- Priority Score & Variable Breakdown -->
+                    <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 p-3 rounded-xl mb-4 space-y-1.5 text-xs">
+                      <div class="flex items-center justify-between">
+                        <span class="text-slate-500 dark:text-slate-400 font-medium">Priority Score:</span>
+                        <span class="font-black text-indigo-600 dark:text-indigo-400 text-sm">{{ f.totalScore }} pts</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Fabric Quality:</span>
+                        <span class="text-amber-500 font-bold">
+                          <span v-for="s in f.fabricQuality" :key="s">★</span> ({{ f.fabricQuality }}/5)
+                        </span>
+                      </div>
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Wholesale Price Factor:</span>
+                        <span class="font-bold text-slate-800 dark:text-slate-200">{{ formatBDT(f.baseWholesaleCost) }}</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400">Active Pending Orders:</span>
+                        <span :class="f.pendingCount > 3 ? 'text-rose-600 dark:text-rose-400 font-extrabold' : 'text-slate-800 dark:text-slate-200 font-bold'">
+                          {{ f.pendingCount }} Pending {{ f.pendingCount > 3 ? '⚠️' : '' }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p v-if="f.notes" class="text-xs text-slate-500 dark:text-slate-400 mb-4 line-clamp-2 italic">
+                      "{{ f.notes }}"
+                    </p>
+                  </div>
+
+                  <!-- Actions Footer -->
+                  <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <a v-if="f.waGroupLink || f.phone" :href="f.waGroupLink || ('https://wa.me/' + (f.phone || '').replace(/[^0-9]/g, ''))" target="_blank"
+                       class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded-xl border border-emerald-200 dark:border-emerald-800 transition-all flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                      <span>WhatsApp Group</span>
+                    </a>
+                    <button @click="openEditFactoryModal(f)" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition-all border border-transparent dark:border-slate-700">
+                      Edit Factory
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            
+            <!-- Factory Bills & Payments -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Factory Bills & Payments
+                  </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage aggregated bills submitted by factories and link them to orders.</p>
+                </div>
+                <button @click="openAddBillModal" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                  + Add Factory Bill
+                </button>
+              </div>
+
+              <div v-if="factoryBills.length === 0" class="p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                <span class="text-slate-400 dark:text-slate-500 text-xs font-semibold">No factory bills added yet.</span>
+              </div>
+              <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div v-for="bill in factoryBills" :key="bill.id" class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3 relative group">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-black text-slate-900 dark:text-slate-100">{{ getFactoryName(bill.factoryId) }}</span>
+                    <span class="text-[10px] text-slate-400 font-bold">{{ bill.date }}</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div v-if="bill.socialProofUrl" @click="openPhotoModal(bill.socialProofUrl, 'Bill ' + bill.id)" class="cursor-pointer">
+                      <img :src="bill.socialProofUrl" class="w-12 h-12 rounded object-cover border border-slate-300 dark:border-slate-600" title="Click to view bill image" />
+                    </div>
+                    <div>
+                      <div class="text-lg font-black text-emerald-600 dark:text-emerald-400">{{ formatBDT(bill.amount) }}</div>
+                      <div class="text-[10px] text-slate-500 font-semibold">{{ (bill.linkedOrderIds || []).length }} linked orders</div>
+                    </div>
+                  </div>
+                  <p v-if="bill.notes" class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 italic">"{{ bill.notes }}"</p>
+                  <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button @click="openViewBillModal(bill)" class="p-1.5 text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded" title="View Bill Summary">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                    <button @click="openEditBillModal(bill)" class="p-1.5 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded" title="Edit Bill">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    </button>
+                    <button @click="deleteBill(bill.id)" class="p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded" title="Delete Bill">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Pending Orders Awaiting Factory Submission -->
+
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Direct Order Dispatch Desk</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Select order & dispatch directly to prioritized factory via WhatsApp with attached collage photos & custom specifications</p>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <th class="p-3">Order ID & Date</th>
+                      <th class="p-3">Customer & Phone</th>
+                      <th class="p-3">Product Info</th>
+                      <th class="p-3">Collage Photo</th>
+                      <th class="p-3">Current Tag / Status</th>
+                      <th class="p-3 text-center">Dispatch Action</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                    <tr v-for="ord in dispatchDeskOrders" :key="ord.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td class="p-3 font-bold text-slate-900 dark:text-slate-100">
+                        {{ ord.id }}
+                        <div class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">{{ ord.timestamp }}</div>
+                      </td>
+                      <td class="p-3">
+                        <div class="font-bold text-slate-900 dark:text-slate-100">{{ ord.customerName }}</div>
+                        <div class="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">{{ ord.customerPhone }}</div>
+                      </td>
+                      <td class="p-3">
+                        <div class="font-bold text-slate-800 dark:text-slate-200">{{ ord.productCategory }}</div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">{{ ord.productCategory }} ({{ ord.seatConfig }})</div>
+                      </td>
+                      <td class="p-3">
+                        <div v-if="ord.collagePhotoUrl" @click="openPhotoModal(ord.collagePhotoUrl, ord.id)" class="flex items-center gap-2 cursor-pointer group">
+                          <img :src="ord.collagePhotoUrl" class="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform" />
+                          <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold group-hover:underline">View Photo</span>
+                        </div>
+                        <span v-else class="text-[11px] text-slate-400 italic">No Photo</span>
+                      </td>
+                      <td class="p-3">
+                        <span v-if="ord.factoryTag" class="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200 dark:border-indigo-800 block mb-1">
+                          🏭 {{ ord.factoryTag }}
+                        </span>
+                        <span :class="getStatusStyle(ord.status)" class="px-2 py-0.5 rounded text-[10px] font-bold border inline-block">
+                          {{ ord.status }}
+                        </span>
+                      </td>
+                      <td class="p-3 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                          <button @click="openDispatchModal(ord)" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                            <span>WhatsApp Dispatch</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </transition>
+
+
+        
+        <!-- ==================== ADMIN: TRASH / DELETED ORDERS ==================== -->
+        <transition name="pane-fade" mode="out-in">
+          <div v-if="currentUser.role === 'admin' && activeTab === 'trash'" key="admin-trash" class="space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-rose-200/80 dark:border-rose-900/50 shadow-xs">
+              <div>
+                <h2 class="text-xl font-black text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  Deleted Orders Trash
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">View recently deleted orders. You can restore them or empty the trash permanently.</p>
+              </div>
+              <button @click="emptyTrash" v-if="deletedOrders.length > 0" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold rounded-xl transition-all shadow-md">
+                Empty Trash Permanently
+              </button>
+            </div>
+            
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <th class="p-4">Deleted On</th>
+                      <th class="p-4">Order ID & Original Date</th>
+                      <th class="p-4">Customer Details</th>
+                      <th class="p-4 text-right">Pricing (BDT)</th>
+                      <th class="p-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                    <tr v-for="ord in deletedOrders" :key="ord.id" class="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                      <td class="p-4 font-mono text-slate-500 text-[10px]">{{ ord.deletedAt }}</td>
+                      <td class="p-4 font-medium text-slate-900 dark:text-slate-100">
+                        <div class="font-bold">{{ ord.id }}</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">{{ ord.timestamp }}</div>
+                      </td>
+                      <td class="p-4">
+                        <div class="font-bold text-slate-900 dark:text-slate-100">{{ ord.customerName }}</div>
+                        <div class="text-[11px] text-indigo-600 font-medium">{{ ord.customerPhone }}</div>
+                      </td>
+                      <td class="p-4 text-right font-extrabold text-slate-900 dark:text-slate-100">
+                        {{ formatBDT(ord.totalAmount) }}
+                      </td>
+                      <td class="p-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                          <button @click="restoreOrder(ord)" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg font-bold transition-all text-[10px]">Restore</button>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr v-if="deletedOrders.length === 0">
+                      <td colspan="5" class="p-8 text-center text-slate-400 font-medium">Trash is empty.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </transition>
+        <!-- ==================== ADMIN: SYSTEM SETTINGS ==================== -->
+        <transition name="pane-fade" mode="out-in">
+          <div v-if="currentUser.role === 'admin' && activeTab === 'settings'" key="admin-settings" class="space-y-8">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div>
+                <h2 class="text-xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  System Settings & Configuration
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Manage categories, user roles, targets, and create full system snapshots.</p>
+              </div>
+            </div>
+
+
+            <!-- HOST COMPUTER SEPARATE FOLDERS MANAGER (PHOTOS, COLLAGES, SCREENSHOTS) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span class="text-indigo-600 text-lg">🗂️</span>
+                    Host Computer Folder Architecture & Media Manager
+                  </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Order media files are stored separately in 3 designated directories beside the main <code>index.html</code> file on your host machine.
+                  </p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button @click="packageAndDownloadAllMediaZip" :disabled="isPackagingZip" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5">
+                    <span v-if="isPackagingZip" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span v-else>📦</span>
+                    <span>Package All Media by Folder (ZIP)</span>
+                  </button>
+                  <button @click="downloadHostFolderSetupScript" class="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+                    <span>🛠️</span>
+                    <span>Setup Script (.bat)</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 3 FOLDERS STATS & OVERVIEW -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <!-- 1. photos/ -->
+                <div class="p-4 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div class="font-extrabold text-amber-900 dark:text-amber-200 text-xs flex items-center gap-1.5">
+                      <span>📷 ./photos/</span>
+                    </div>
+                    <span class="px-2 py-0.5 bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 font-mono text-[10px] font-bold rounded-full">
+                      {{ mediaFolderStats.photosCount }} items
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-snug">
+                    Stores raw product photos, fabric swatches, and factory bill receipts.
+                  </p>
+                  <div class="text-[9px] font-mono text-amber-700 dark:text-amber-400 bg-white/70 dark:bg-slate-900/70 p-1.5 rounded border border-amber-200 dark:border-amber-800">
+                    Path format: <code>photos/photo_RH..._date.jpg</code>
+                  </div>
+                </div>
+
+                <!-- 2. collages/ -->
+                <div class="p-4 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div class="font-extrabold text-indigo-900 dark:text-indigo-200 text-xs flex items-center gap-1.5">
+                      <span>🖼️ ./collages/</span>
+                    </div>
+                    <span class="px-2 py-0.5 bg-indigo-200 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200 font-mono text-[10px] font-bold rounded-full">
+                      {{ mediaFolderStats.collagesCount }} items
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-indigo-800 dark:text-indigo-300 leading-snug">
+                    Stores multi-view furniture design collage compositions uploaded by sellers.
+                  </p>
+                  <div class="text-[9px] font-mono text-indigo-700 dark:text-indigo-400 bg-white/70 dark:bg-slate-900/70 p-1.5 rounded border border-indigo-200 dark:border-indigo-800">
+                    Path format: <code>collages/seller_CN_INV_date.jpg</code>
+                  </div>
+                </div>
+
+                <!-- 3. screenshots/ -->
+                <div class="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div class="font-extrabold text-emerald-900 dark:text-emerald-200 text-xs flex items-center gap-1.5">
+                      <span>💬 ./screenshots/</span>
+                    </div>
+                    <span class="px-2 py-0.5 bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 font-mono text-[10px] font-bold rounded-full">
+                      {{ mediaFolderStats.screenshotsCount }} items
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-emerald-800 dark:text-emerald-300 leading-snug">
+                    Stores social media order chat proofs, Messenger / WhatsApp captures, and payment receipts.
+                  </p>
+                  <div class="text-[9px] font-mono text-emerald-700 dark:text-emerald-400 bg-white/70 dark:bg-slate-900/70 p-1.5 rounded border border-emerald-200 dark:border-emerald-800">
+                    Path format: <code>screenshots/proof_seller_CN_date.png</code>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SNAPSHOT BACKUP SYSTEM -->
+            <div class="bg-indigo-50 dark:bg-indigo-950/20 p-6 rounded-2xl border border-indigo-200 dark:border-indigo-800 shadow-xs">
+              <h3 class="text-lg font-bold text-indigo-900 dark:text-indigo-100 flex items-center gap-2">
+                💾 Snapshot Backup System
+              </h3>
+              <p class="text-xs text-indigo-700 dark:text-indigo-300 mt-1 mb-4">Export or restore the entire database (Orders, Users, Categories, Factories, Trash) as a JSON file.</p>
+              
+              <div class="flex flex-wrap items-center gap-3">
+                <button @click="exportSnapshot" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold rounded-xl transition-all shadow-md flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                  Export Full Snapshot
+                </button>
+                <div class="relative">
+                  <input type="file" ref="importInput" accept=".json" @change="importSnapshot" class="hidden" />
+                  <button @click="$refs.importInput.click()" class="px-5 py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 text-xs font-extrabold rounded-xl transition-all shadow-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    Restore from Snapshot
+                  </button>
+                </div>
+              </div>
+
+              <!-- GOOGLE SHEETS APPS SCRIPT BACKUP -->
+              <div class="mt-8 pt-6 border-t border-indigo-200/50 dark:border-indigo-800/50">
+                <h4 class="text-sm font-bold text-indigo-900 dark:text-indigo-100 mb-2">📊 Google Sheets Auto-Backup (Apps Script)</h4>
+                <p class="text-[11px] text-indigo-700 dark:text-indigo-300 mb-4 max-w-3xl leading-relaxed">
+                  You can push your system data directly to Google Sheets. To do this, go to Google Sheets > Extensions > Apps Script, paste the provided script, deploy it as a "Web App" (accessible to anyone), and paste the resulting URL below.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                  <input v-model="appsScriptUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="flex-1 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 rounded-xl px-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <button @click="saveAppsScriptUrl" class="px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white text-xs font-bold rounded-xl transition-all hover:bg-slate-700 dark:hover:bg-slate-600">
+                    Save URL
+                  </button>
+                  <button @click="backupToGoogleSheets" :disabled="isBackingUp || !appsScriptUrl" :class="isBackingUp ? 'opacity-70 cursor-not-allowed' : 'hover:bg-emerald-500'" class="px-5 py-2 bg-emerald-600 text-white text-xs font-extrabold rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    <span v-if="isBackingUp" class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span v-else>🚀</span>
+                    {{ isBackingUp ? 'Syncing...' : 'Force Sync Now' }}
+                  </button>
+                  <button @click="testSyncConnection" :disabled="isTestingSync || !appsScriptUrl" :class="isTestingSync ? 'opacity-70 cursor-not-allowed' : 'hover:bg-slate-200 dark:hover:bg-slate-700'" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                    <span v-if="isTestingSync" class="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></span>
+                    <span v-else>🔍</span>
+                    Test Connection
+                  </button>
+                </div>
+                <div v-if="syncStatusMsg" :class="syncStatusColor" class="mt-4 px-4 py-3 rounded-xl border text-[11px] font-bold flex items-center gap-2 transition-all">
+                  <svg v-if="syncStatusColor.includes('emerald')" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <svg v-else-if="syncStatusColor.includes('rose')" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  {{ syncStatusMsg }}
+                </div>
+              </div>
+            </div>
+            
+            <!-- GRID FOR CATALOG & USERS -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              
+              <!-- CATALOG SETUP -->
+              <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col h-full">
+                <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Product Categories</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4">Manage product categories for order forms</p>
+                <form @submit.prevent="addCategory" class="flex gap-2 mb-4">
+                  <input v-model="newCategoryName" type="text" required placeholder="New category..."
+                         class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+                  <button type="submit" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition-all">Add</button>
+                </form>
+                <div class="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1">
+                  <div v-for="(cat, idx) in categories" :key="idx" class="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-xl">
+                    <span class="text-xs font-bold text-slate-800 dark:text-slate-200">{{ cat }}</span>
+                    <button @click="removeCategory(idx)" class="text-[10px] text-rose-500 hover:text-rose-700 font-semibold">Remove</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- USER CONTROL -->
+              <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col h-full">
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">User Control</h3>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Manage sellers and admins</p>
+                  </div>
+                  <button @click="openAddUserModal" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition-all">
+                    + New User
+                  </button>
+                </div>
+                
+                <div class="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-1">
+                  <div v-for="u in users" :key="u.id" class="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-xl relative">
+                    <div class="flex items-center justify-between mb-2">
+                      <div class="flex items-center gap-2">
+                        <div class="text-sm font-bold text-slate-900 dark:text-slate-100">{{ u.name }}</div>
+                        <span class="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded">{{ u.role }}</span>
+                      </div>
+                      <span :class="u.active ? 'text-emerald-600' : 'text-rose-600'" class="text-[10px] font-bold">{{ u.active ? 'ACTIVE' : 'SUSPENDED' }}</span>
+                    </div>
+                    <div v-if="u.role === 'seller'" class="text-[10px] text-slate-500 mb-2">Target: {{ formatBDT(u.target || 300000) }}</div>
+                    
+                    <div class="flex gap-2">
+                      <button @click="openEditUserModal(u)" class="text-[10px] px-2 py-1 bg-white dark:bg-slate-800 border rounded text-indigo-600 font-semibold hover:bg-indigo-50">Edit</button>
+                      <button v-if="u.username !== 'admin1'" @click="toggleUserActive(u)" class="text-[10px] px-2 py-1 bg-white dark:bg-slate-800 border rounded font-semibold" :class="u.active ? 'text-rose-600 hover:bg-rose-50' : 'text-emerald-600 hover:bg-emerald-50'">{{ u.active ? 'Suspend' : 'Reactivate' }}</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </transition>
+
+
+        <!-- ==================== SELLER: ORDER INTAKE & PARSER ==================== -->
+        <transition name="pane-fade" mode="out-in">
+          <div v-if="currentUser.role === 'seller' && activeTab === 'intake'" key="seller-intake" class="space-y-6">
+            
+            <!-- Seller Personal Monthly Target Progress Indicator -->
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Personal Monthly Target Tracker</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Target Goal: <strong class="text-indigo-600 dark:text-indigo-400">{{ formatBDT(currentUser.target || 300000) }}</strong></p>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-black text-slate-900 dark:text-slate-100">{{ formatBDT(myMonthlySales) }}</div>
+                  <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400">{{ myTargetPercentage }}% Completed</div>
+                </div>
+              </div>
+              <div class="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-500"
+                     :style="{ width: Math.min(myTargetPercentage, 100) + '%' }"></div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              <!-- Left Column: Omni-Clipboard Heuristic Parser Engine -->
+              <div class="lg:col-span-1 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Omni-Clipboard Parser</h3>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Paste raw WhatsApp / Messenger chat text</p>
+                  </div>
+                </div>
+
+                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Paste multi-line text scraped directly from client conversations. Our heuristic regex scanner will automatically detect phone numbers, prices, delivery charges, source signatures, and seat configs.
+                </p>
+
+                <textarea v-model="clipboardRawText" @paste="handleProofPaste($event, intakeForm)" rows="7" placeholder="Paste chat text here (or paste screenshot directly)...
+e.g.
+Name: Far Ha Na
+Phone: 01711223344
+Address: Dhanmondi, Dhaka
+Design: RH-336
+Price: 65000 tk, Del: 2500"
+                          class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"></textarea>
+
+                <button @click="parseClipboard" type="button" class="w-full py-2.5 px-4 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-semibold text-xs rounded-xl border border-indigo-200 dark:border-indigo-800 transition-all flex items-center justify-center gap-2">
+                  <span>⚡ Scan & Map to Intake Form</span>
+                </button>
+
+                <div v-if="parseSuccessMsg" class="p-3 bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                  {{ parseSuccessMsg }}
+                </div>
+              </div>
+
+              <!-- Right Column: Registration Intake Form -->
+              <div class="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 mb-4">New Order Registration Intake</h3>
+
+                <form @submit.prevent="submitNewOrder" class="space-y-4">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Customer Name -->
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer Name *</label>
+                      <input v-model="intakeForm.customerName" type="text" required placeholder="e.g. Far Ha Na"
+                             class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+                    </div>
+
+                    <!-- Customer Phone -->
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Mobile Vector (Phone) *</label>
+                      <input v-model="intakeForm.customerPhone" type="text" required placeholder="e.g. 01711223344"
+                             class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+                    </div>
+                  </div>
+
+                  <!-- Shipping Address -->
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Shipping Address *</label>
+                    <textarea v-model="intakeForm.customerAddress" required rows="2" placeholder="Full delivery address with area & district"
+                              class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"></textarea>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- CN Number -->
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Consignment No (CN Number)
+                        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">(Courier tracking)</span>
+                      </label>
+                      <input v-model="intakeForm.cnNumber" type="text" placeholder="e.g. CN-882049"
+                             class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+                    </div>
+
+                    <!-- Factory Invoice Number -->
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Factory Invoice No
+                        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">(Factory bill ref)</span>
+                      </label>
+                      <input v-model="intakeForm.invoiceNumber" type="text" placeholder="e.g. INV-2026-041"
+                             class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Traffic Source -->
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Traffic Source</label>
+                      <select v-model="intakeForm.trafficSource" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none">
+                        <option value="Messenger">Messenger</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Direct Call">Direct Call</option>
+                        <option value="Walk-in">Walk-in</option>
+                      </select>
+                    </div>
+
+                    <!-- Product Category -->
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Product Category *</label>
+                      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Product Category</label>
+                      <select v-model="intakeForm.productCategory" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none">
+                        <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Seat Configuration -->
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Seat Configuration</label>
+                      <select v-model="intakeForm.seatConfig" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none">
+                        <option value="1-Seater">1-Seater</option>
+                        <option value="2-Seater">2-Seater</option>
+                        <option value="3-Seater">3-Seater</option>
+                        <option value="L-Shape">L-Shape</option>
+                        <option value="Custom Set">Custom Set</option>
+                      </select>
+                    </div>
+
+                    <!-- Fulfillment Method -->
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Fulfillment Method</label>
+                      <select v-model="intakeForm.fulfillmentMethod" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none">
+                        <option value="Home Delivery">Home Delivery</option>
+                        <option value="Courier Service">Courier Service</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Pricing Calculations -->
+                  <div class="p-4 bg-indigo-50/50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900 rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Sale Amount (BDT)</label>
+                      <input v-model.number="intakeForm.saleAmount" type="number" min="0" placeholder="0"
+                             class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none" />
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Delivery Charge (BDT)</label>
+                      <input v-model.number="intakeForm.deliveryCharge" type="number" min="0" placeholder="0"
+                             class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none" />
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-indigo-700 dark:text-indigo-300 mb-1">Total Pricing</label>
+                      <div class="text-sm font-black text-indigo-700 dark:text-indigo-400 py-2">
+                        {{ formatBDT((intakeForm.saleAmount || 0) + (intakeForm.deliveryCharge || 0)) }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Urgent Expedite Checkbox -->
+                  <div class="flex items-center gap-2">
+                    <input v-model="intakeForm.urgent" type="checkbox" id="urgent-check" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4" />
+                    <label for="urgent-check" class="text-xs font-bold text-rose-600 dark:text-rose-400 cursor-pointer">Mark as High-Alert Urgent Order</label>
+                  </div>
+
+                  <!-- HOST COMPUTER SEPARATE FOLDER MEDIA ATTACHMENTS (COLLAGES, SCREENSHOTS, PHOTOS) -->
+                  <div class="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-4">
+                    <div class="flex items-center justify-between">
+                      <h4 class="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        <span>🗂️ Host Media Attachments</span>
+                        <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">(Stored separately beside index.html)</span>
+                      </h4>
+                      <span class="text-[10px] font-mono font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                        3 Host Folders
+                      </span>
+                    </div>
+
+                    <!-- 1. COLLAGE ATTACHMENT (FOLDER: ./collages/) -->
+                    <div class="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
+                      <div class="flex items-center justify-between flex-wrap gap-1">
+                        <label class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <span>🖼️ Product Design Collage</span>
+                          <span class="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-[9px] font-bold">📂 collages/</span>
+                        </label>
+                        <span v-if="selectedCollageTile === 'terminal'" class="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[9px] font-extrabold uppercase animate-pulse">
+                          🎯 Ready to Paste (Ctrl+V)
+                        </span>
+                      </div>
+
+                      <!-- Paste / Drag & Drop Tile -->
+                      <div @click="selectCollageTile('terminal')"
+                           tabindex="0"
+                           @focus="selectCollageTile('terminal')"
+                           @paste="handleCollagePaste($event, intakeForm)"
+                           @dragover.prevent
+                           @drop="handleCollageDrop($event, intakeForm)"
+                           :class="selectedCollageTile === 'terminal' ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/90 dark:bg-indigo-950/80 ring-2 ring-indigo-500/30' : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 hover:border-indigo-400'"
+                           class="p-3 border border-dashed rounded-lg text-center cursor-pointer transition-all outline-none flex flex-col sm:flex-row items-center justify-between gap-2">
+                        
+                        <input type="file" ref="terminalCollageInput" accept="image/*" @change="handleCollageFileUpload($event, intakeForm)" class="hidden" />
+                        
+                        <div class="flex items-center gap-2 text-left">
+                          <span class="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 flex items-center justify-center font-bold text-xs">🖼️</span>
+                          <div class="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
+                            <span v-if="selectedCollageTile === 'terminal'" class="text-indigo-700 dark:text-indigo-300 font-bold">🎯 Tile Selected! Press <kbd class="bg-indigo-200 dark:bg-indigo-900 px-1 rounded font-mono text-[9px]">Ctrl+V</kbd> to paste collage</span>
+                            <span v-else>Click to select & press <kbd class="bg-slate-200 dark:bg-slate-700 px-1 rounded font-mono text-[9px]">Ctrl+V</kbd> or drag collage here</span>
+                          </div>
+                        </div>
+
+                        <button type="button" @click.stop="$refs.terminalCollageInput.click()" class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold rounded-md">
+                          📁 Browse File
+                        </button>
+                      </div>
+
+                      <div v-if="intakeForm.collagePhotoUrl" class="p-2.5 bg-indigo-50/70 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900 rounded-lg flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                          <img :src="intakeForm.collagePhotoUrl" @click="openPhotoModal(intakeForm.collagePhotoUrl, 'Collage')" class="w-11 h-11 object-cover rounded border border-indigo-200 dark:border-indigo-800 cursor-pointer" />
+                          <div>
+                            <div class="text-[11px] font-bold text-slate-900 dark:text-slate-100">Design Collage Attached</div>
+                            <div class="text-[10px] text-indigo-700 dark:text-indigo-300 font-mono font-semibold truncate max-w-[180px]">
+                              📁 {{ intakeForm.collagePhotoFileName || 'collages/collage_file.jpg' }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <button type="button" @click="saveMediaToHostDisk(intakeForm.collagePhotoUrl, intakeForm.collagePhotoFileName || 'collages/collage.jpg')" class="px-2 py-1 bg-white dark:bg-slate-800 border border-indigo-200 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold rounded hover:bg-indigo-50" title="Save file for host ./collages/ folder">
+                            💾 Save to collages/
+                          </button>
+                          <button type="button" @click="copyHostRelativePath(intakeForm.collagePhotoFileName || 'collages/collage.jpg')" class="px-1.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 text-slate-600 dark:text-slate-300 text-[10px] font-bold rounded" title="Copy relative path">
+                            📋
+                          </button>
+                          <button type="button" @click="intakeForm.collagePhotoUrl = ''; intakeForm.collagePhotoFileName = '';" class="text-rose-600 dark:text-rose-400 text-[10px] font-bold p-1">
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 2. SOCIAL MEDIA SCREENSHOT CHAT PROOF (FOLDER: ./screenshots/) -->
+                    <div class="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
+                      <div class="flex items-center justify-between flex-wrap gap-1">
+                        <label class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <span>💬 Social Order Chat Screenshot</span>
+                          <span class="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-mono text-[9px] font-bold">📂 screenshots/</span>
+                        </label>
+                        <span v-if="selectedProofTile === 'terminal'" class="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[9px] font-extrabold uppercase animate-pulse">
+                          🎯 Ready to Paste (Ctrl+V)
+                        </span>
+                      </div>
+
+                      <!-- Paste / Drag & Drop Tile -->
+                      <div @click="selectProofTile('terminal')"
+                           tabindex="0"
+                           @focus="selectProofTile('terminal')"
+                           @paste="handleProofPaste($event, intakeForm)"
+                           @dragover.prevent
+                           @drop="handleProofDrop($event, intakeForm)"
+                           :class="selectedProofTile === 'terminal' ? 'border-indigo-600 dark:border-indigo-500 bg-indigo-50/90 dark:bg-indigo-950/80 ring-2 ring-indigo-500/30' : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 hover:border-indigo-400'"
+                           class="p-3 border border-dashed rounded-lg text-center cursor-pointer transition-all outline-none flex flex-col sm:flex-row items-center justify-between gap-2">
+                        
+                        <input type="file" ref="terminalProofInput" accept="image/*" @change="handleProofFileUpload($event, intakeForm)" class="hidden" />
+                        
+                        <div class="flex items-center gap-2 text-left">
+                          <span class="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 flex items-center justify-center font-bold text-xs">📷</span>
+                          <div class="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
+                            <span v-if="selectedProofTile === 'terminal'" class="text-indigo-700 dark:text-indigo-300 font-bold">🎯 Tile Selected! Press <kbd class="bg-indigo-200 dark:bg-indigo-900 px-1 rounded font-mono text-[9px]">Ctrl+V</kbd> to paste screenshot</span>
+                            <span v-else>Click to select & press <kbd class="bg-slate-200 dark:bg-slate-700 px-1 rounded font-mono text-[9px]">Ctrl+V</kbd> or drag screenshot here</span>
+                          </div>
+                        </div>
+
+                        <button type="button" @click.stop="$refs.terminalProofInput.click()" class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold rounded-md">
+                          📁 Browse File
+                        </button>
+                      </div>
+
+                      <div v-if="intakeForm.socialProofUrl" class="p-2.5 bg-emerald-50/70 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                          <img :src="intakeForm.socialProofUrl" @click="openPhotoModal(intakeForm.socialProofUrl, 'Screenshot Proof')" class="w-11 h-11 object-cover rounded border border-emerald-300 dark:border-emerald-700 cursor-pointer" />
+                          <div>
+                            <div class="text-[11px] font-bold text-emerald-950 dark:text-emerald-200">Chat Screenshot Attached</div>
+                            <div class="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-semibold truncate max-w-[180px]">
+                              📁 {{ intakeForm.socialProofFileName || 'screenshots/proof.png' }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <button type="button" @click="saveMediaToHostDisk(intakeForm.socialProofUrl, intakeForm.socialProofFileName || 'screenshots/proof.png')" class="px-2 py-1 bg-white dark:bg-slate-800 border border-emerald-200 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold rounded hover:bg-emerald-50" title="Save file for host ./screenshots/ folder">
+                            💾 Save to screenshots/
+                          </button>
+                          <button type="button" @click="copyHostRelativePath(intakeForm.socialProofFileName || 'screenshots/proof.png')" class="px-1.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 text-slate-600 dark:text-slate-300 text-[10px] font-bold rounded" title="Copy relative path">
+                            📋
+                          </button>
+                          <button type="button" @click="intakeForm.socialProofUrl = ''; intakeForm.socialProofFileName = '';" class="text-rose-600 dark:text-rose-400 text-[10px] font-bold p-1">
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <!-- Extra Production & Fabric Details -->
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Extra Design & Fabric Specifications (For Factory & WhatsApp)</label>
+                    <textarea v-model="intakeForm.extraDetails" rows="2" placeholder="e.g. Royal Blue Velvet upholstery, high-density 32-count foam, brass metal feet"
+                              class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"></textarea>
+                  </div>
+
+                  <!-- Special Notes -->
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Special Order Notes</label>
+                    <input v-model="intakeForm.notes" type="text" placeholder="General customer notes or delivery timing request..."
+                           class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none" />
+                  </div>
+
+                  <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/20 transition-all">
+                    Submit & Register Order
+                  </button>
+                </form>
+              </div>
+
+            </div>
+
+          </div>
+        </transition>
+
+
+        <!-- ==================== SELLER: MY ENTRY ARCHIVE ==================== -->
+        <transition name="pane-fade" mode="out-in">
+          <div v-if="currentUser.role === 'seller' && activeTab === 'my_orders'" key="seller-orders" class="space-y-4">
+            
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">My Submitted Order Logs</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Locked history view of orders logged by {{ currentUser.name }}</p>
+            </div>
+
+            <!-- Ledger Table for Seller -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <th class="p-4">Order ID & Date</th>
+                      <th class="p-4">Customer & CN / Invoice</th>
+                      <th class="p-4">Code & Source</th>
+                      <th class="p-4">Product & Collage</th>
+                      <th class="p-4 text-right">Total Price</th>
+                      <th class="p-4">Pipeline Status</th>
+                      <th class="p-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                    <tr v-for="ord in myOrders" :key="ord.id" :class="ord.urgent ? 'urgent-glow-row' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'">
+                      <td class="p-4 whitespace-nowrap font-bold text-slate-900 dark:text-slate-100">
+                        <div class="flex items-center gap-1.5">
+                          <span>{{ ord.id }}</span>
+                          <span v-if="ord.urgent" class="px-1.5 py-0.5 text-[9px] bg-rose-600 text-white rounded font-extrabold uppercase animate-pulse">Urgent</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">{{ ord.timestamp }}</div>
+                        <div v-if="ord.factoryTag" class="text-[9px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 px-1 py-0.5 rounded inline-block mt-0.5">
+                          🏭 {{ ord.factoryTag }}
+                        </div>
+                      </td>
+                      <td class="p-4">
+                        <div class="font-bold text-slate-900 dark:text-slate-100">{{ ord.customerName }}</div>
+                        <div class="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">{{ ord.customerPhone }}</div>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                          <span v-if="ord.cnNumber" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-mono text-[9px] font-bold">CN: {{ ord.cnNumber }}</span>
+                          <span v-if="ord.invoiceNumber" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-mono text-[9px] font-bold">INV: {{ ord.invoiceNumber }}</span>
+                        </div>
+                      </td>
+                      <td class="p-4 whitespace-nowrap">
+                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10px] font-bold text-slate-800 dark:text-slate-200">{{ ord.productCategory }}</span>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{{ ord.trafficSource }}</div>
+                      </td>
+                      <td class="p-4">
+                        <div class="font-semibold text-slate-800 dark:text-slate-200">{{ ord.productCategory }}</div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">{{ ord.seatConfig }}</div>
+                        <div v-if="ord.collagePhotoUrl" @click="openPhotoModal(ord.collagePhotoUrl, ord.id)" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold cursor-pointer hover:underline mt-0.5 flex items-center gap-1">
+                          🖼️ Collage Photo
+                        </div>
+                        <div v-if="ord.collagePhotoFileName" class="text-[9px] text-slate-400 dark:text-slate-500 font-mono truncate max-w-[120px]" :title="ord.collagePhotoFileName">
+                          📁 {{ ord.collagePhotoFileName }}
+                        </div>
+                        <div v-if="ord.socialProofUrl" @click="openPhotoModal(ord.socialProofUrl, 'Proof - ' + ord.id)" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold cursor-pointer hover:underline mt-0.5 flex items-center gap-1">
+                          💬 Chat Proof
+                        </div>
+                        <div v-if="ord.socialProofFileName" class="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono truncate max-w-[120px]" :title="ord.socialProofFileName">
+                          🖼️ {{ ord.socialProofFileName }}
+                        </div>
+                      </td>
+                      <td class="p-4 text-right font-extrabold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                        {{ formatBDT(ord.totalAmount) }}
+                      </td>
+                      <td class="p-4 whitespace-nowrap">
+                        <div class="space-y-1">
+                          <span :class="getStatusStyle(ord.status)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border inline-block w-full text-center">
+                            {{ ord.status }}
+                          </span>
+                          <!-- One-way status advancement for seller -->
+                          <button v-if="pipelineStages.indexOf(ord.status) < pipelineStages.length - 1"
+                                  @click="advanceSellerStatus(ord)"
+                                  class="w-full text-[10px] font-bold text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded-md transition-all flex items-center justify-center gap-1">
+                            <span>Advance Stage ➔</span>
+                          </button>
+                        </div>
+                      </td>
+                      <td class="p-4 whitespace-nowrap text-center">
+                        <div class="flex items-center justify-center gap-1">
+                          <button @click="openCourierModal(ord)" title="Track Courier" class="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/80 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-all text-xs font-bold flex items-center gap-1">
+                            🚚
+                          </button>
+                          <button @click="openEditOrderModal(ord)" title="Edit Order Details / Urgent Status" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 text-slate-600 dark:text-slate-300 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                          </button>
+                          <button @click="toggleUrgent(ord)" title="Toggle High Alert" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 text-slate-600 dark:text-slate-300 transition-all">
+                            <svg class="w-4 h-4" :class="ord.urgent ? 'text-rose-600 fill-rose-500' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr v-if="myOrders.length === 0">
+                      <td colspan="7" class="p-8 text-center text-slate-400 dark:text-slate-500 font-medium">
+                        You have not submitted any order logs yet.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </transition>
+
+      </main>
+
+      <!-- Persistent Screen Footer -->
+      <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-3 px-6 text-[11px] text-slate-400 dark:text-slate-500 font-medium sticky bottom-0 z-20 shadow-xs">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+          <div class="font-bold tracking-wider text-slate-600 dark:text-slate-400 lowercase">homeaura</div>
+          <div class="font-semibold text-slate-500 dark:text-slate-400">Powered by RGMultimedia</div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- GLOBAL CUSTOM MODAL SYSTEM LAYER -->
+    <transition name="modal-anim">
+      <div v-if="activeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 dark:border-slate-800 relative flex flex-col max-h-[90vh] my-auto overflow-hidden text-slate-900 dark:text-slate-100">
+          
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
+            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <span>{{ modalData.title }}</span>
+            </h3>
+            <button @click="closeModal" title="Close Modal" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-bold text-lg leading-none">✕</button>
+          </div>
+
+          <!-- Modal Scrollable Body -->
+          <div class="p-6 overflow-y-auto space-y-4 flex-1">
+
+            
+            <div v-if="activeModal === 'factoryBillModal'" class="space-y-4 text-xs">
+              <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Select Factory</label>
+                    <select v-model="modalData.bill.factoryId" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 dark:text-slate-100">
+                      <option value="" disabled>-- Select --</option>
+                      <option v-for="f in factories" :key="f.id" :value="f.id">{{ f.name }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Bill Date</label>
+                    <input type="date" v-model="modalData.bill.date" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 dark:text-slate-100" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Bill Amount (BDT)</label>
+                  <input type="number" v-model="modalData.bill.amount" placeholder="e.g. 50000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 dark:text-slate-100" />
+                </div>
+
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Upload/Paste Bill Photo (Optional)</label>
+                  <div class="flex items-center gap-3">
+                    <img v-if="modalData.bill.socialProofUrl" :src="modalData.bill.socialProofUrl" class="w-16 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs" />
+                    <div class="flex-1 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" @click="$refs.billPhotoInput.click()">
+                      <input type="file" ref="billPhotoInput" class="hidden" accept="image/*" @change="handleProofFileUpload($event, modalData.bill)" />
+                      <span class="font-bold text-indigo-600 dark:text-indigo-400">Click to Upload</span> or <span class="text-slate-500">Paste Image (Ctrl+V)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Link Orders</label>
+                  <p class="text-[10px] text-slate-400 mb-2">Select the orders covered by this bill.</p>
+                  <div class="max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl p-2 bg-slate-50 dark:bg-slate-800">
+                    <div v-for="ord in [...orders, ...deletedOrders].filter(o => modalData.bill.factoryId ? o.factoryTag === getFactoryName(modalData.bill.factoryId) : true)" :key="ord.id" class="flex items-center gap-2 p-1.5 hover:bg-white dark:hover:bg-slate-900 rounded">
+                      <input type="checkbox" :id="'link-'+ord.id" :value="ord.id" v-model="modalData.bill.linkedOrderIds" class="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500" />
+                      <label :for="'link-'+ord.id" class="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer flex-1">
+                        {{ ord.id }} - {{ ord.customerName }} ({{ ord.productCategory }}) <span v-if="ord.deletedAt" class="text-rose-500 font-bold text-[9px] uppercase ml-1">(Voided)</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Notes (Optional)</label>
+                  <textarea v-model="modalData.bill.notes" rows="2" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-900 dark:text-slate-100" placeholder="Any details..."></textarea>
+                </div>
+              </div>
+              <div class="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button @click="closeModal" type="button" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all">Cancel</button>
+                <button @click="saveBillModal" type="button" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20">
+                  Save Bill
+                </button>
+              </div>
+            </div>
+
+            <!-- ADMIN & SELLER: FULL ORDER & ATTACHMENTS INSPECTION MODAL -->
+
+            <div v-if="activeModal === 'inspectModal'" class="space-y-4 text-xs">
+              <div class="p-3.5 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900 rounded-2xl flex items-center justify-between gap-3">
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-extrabold text-indigo-950 dark:text-indigo-200 text-sm">Order #{{ modalData.order.id }}</span>
+                    <span :class="getStatusStyle(modalData.order.status)" class="px-2 py-0.5 rounded text-[10px] font-extrabold border">
+                      {{ modalData.order.status }}
+                    </span>
+                    <span v-if="modalData.order.urgent" class="px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-extrabold uppercase animate-pulse">
+                      🔥 Urgent
+                    </span>
+                  </div>
+                  <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Submitted by <strong>{{ modalData.order.merchantName }}</strong> on {{ modalData.order.timestamp }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- ATTACHMENTS GALLERY SECTION (3 DEDICATED HOST FOLDERS) -->
+              <div class="space-y-2">
+                <div class="font-extrabold text-slate-800 dark:text-slate-200 text-xs flex items-center justify-between">
+                  <span>🗂️ Host Media Attachments (Separated Folders)</span>
+                  <span class="text-[10px] font-medium text-indigo-600 dark:text-indigo-400">Host Relative Path Resolution</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <!-- 1. Product Collage Card (collages/) -->
+                  <div class="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-1">
+                        <span class="font-bold text-slate-800 dark:text-slate-200 text-[11px]">🖼️ Collage</span>
+                        <span class="px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-[8px] font-bold">collages/</span>
+                      </div>
+                      <span v-if="modalData.order.collagePhotoUrl" class="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[9px] font-extrabold rounded-full">Attached</span>
+                      <span v-else class="text-slate-400 text-[9px]">None</span>
+                    </div>
+
+                    <div v-if="modalData.order.collagePhotoUrl" class="space-y-2">
+                      <div class="relative group bg-slate-950 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video flex items-center justify-center cursor-pointer"
+                           @click="openPhotoModal(modalData.order.collagePhotoUrl, 'Collage - Order #' + modalData.order.id)">
+                        <img :src="modalData.order.collagePhotoUrl" class="max-h-full object-contain group-hover:scale-105 transition-transform" />
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold gap-1">
+                          🔍 Enlarge
+                        </div>
+                      </div>
+                      <div class="text-[9px] font-mono text-indigo-700 dark:text-indigo-300 truncate" :title="modalData.order.collagePhotoFileName">
+                        📁 {{ modalData.order.collagePhotoFileName || 'collages/collage.jpg' }}
+                      </div>
+                      <div class="flex items-center gap-1 pt-1">
+                        <button type="button" @click="saveMediaToHostDisk(modalData.order.collagePhotoUrl, modalData.order.collagePhotoFileName || 'collages/collage.jpg')" class="flex-1 py-1 px-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[9px] font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50">
+                          💾 Save to Host
+                        </button>
+                        <button type="button" @click="copyHostRelativePath(modalData.order.collagePhotoFileName || 'collages/collage.jpg')" class="py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[9px] font-bold text-slate-600 dark:text-slate-300" title="Copy Path">
+                          📋
+                        </button>
+                      </div>
+                    </div>
+                    <div v-else class="p-3 text-center text-slate-400 text-[10px] italic bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+                      No collage file
+                    </div>
+                  </div>
+
+                  <!-- 2. Chat Screenshot Proof Card (screenshots/) -->
+                  <div class="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-1">
+                        <span class="font-bold text-slate-800 dark:text-slate-200 text-[11px]">💬 Screenshot</span>
+                        <span class="px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-mono text-[8px] font-bold">screenshots/</span>
+                      </div>
+                      <span v-if="modalData.order.socialProofUrl" class="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[9px] font-extrabold rounded-full">Attached</span>
+                      <span v-else class="text-slate-400 text-[9px]">None</span>
+                    </div>
+
+                    <div v-if="modalData.order.socialProofUrl" class="space-y-2">
+                      <div class="relative group bg-slate-950 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video flex items-center justify-center cursor-pointer"
+                           @click="openPhotoModal(modalData.order.socialProofUrl, 'Chat Proof - Order #' + modalData.order.id)">
+                        <img :src="modalData.order.socialProofUrl" class="max-h-full object-contain group-hover:scale-105 transition-transform" />
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold gap-1">
+                          🔍 Enlarge
+                        </div>
+                      </div>
+                      <div class="text-[9px] font-mono text-emerald-700 dark:text-emerald-400 truncate" :title="modalData.order.socialProofFileName">
+                        📁 {{ modalData.order.socialProofFileName || 'screenshots/proof.png' }}
+                      </div>
+                      <div class="flex items-center gap-1 pt-1">
+                        <button type="button" @click="saveMediaToHostDisk(modalData.order.socialProofUrl, modalData.order.socialProofFileName || 'screenshots/proof.png')" class="flex-1 py-1 px-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[9px] font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50">
+                          💾 Save to Host
+                        </button>
+                        <button type="button" @click="copyHostRelativePath(modalData.order.socialProofFileName || 'screenshots/proof.png')" class="py-1 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[9px] font-bold text-slate-600 dark:text-slate-300" title="Copy Path">
+                          📋
+                        </button>
+                      </div>
+                    </div>
+                    <div v-else class="p-3 text-center text-slate-400 text-[10px] italic bg-white dark:bg-slate-900 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+                      No screenshot
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ORDER & CUSTOMER INFORMATION GRID -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Customer & Logistics -->
+                <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl space-y-1.5">
+                  <div class="font-bold text-slate-900 dark:text-slate-100 text-xs border-b border-slate-200 dark:border-slate-700 pb-1 mb-1">
+                    👤 Customer & Shipping
+                  </div>
+                  <div><strong>Name:</strong> {{ modalData.order.customerName }}</div>
+                  <div><strong>Phone:</strong> <a :href="'tel:' + modalData.order.customerPhone" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">{{ modalData.order.customerPhone }}</a></div>
+                  <div class="leading-snug"><strong>Address:</strong> {{ modalData.order.customerAddress }}</div>
+                  <div class="pt-1.5 border-t border-slate-200 dark:border-slate-700 text-[11px] space-y-1">
+                    <div><strong>CN Number:</strong> <span class="font-mono font-bold text-indigo-700 dark:text-indigo-400">{{ modalData.order.cnNumber || 'Pending Assignment' }}</span></div>
+                    <div><strong>Factory Invoice:</strong> <span class="font-mono font-bold text-slate-800 dark:text-slate-200">{{ modalData.order.invoiceNumber || 'N/A' }}</span></div>
+                    <div><strong>Logistics Courier:</strong> {{ modalData.order.fulfillmentMethod }}</div>
+                    <div><strong>Assigned Factory:</strong> {{ modalData.order.factoryTag || 'Unassigned' }}</div>
+                  </div>
+                </div>
+
+                <!-- Product & Specs -->
+                <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl space-y-1.5">
+                  <div class="font-bold text-slate-900 dark:text-slate-100 text-xs border-b border-slate-200 dark:border-slate-700 pb-1 mb-1">
+                    📦 Product & Specifications
+                  </div>
+                  <div><strong>Category:</strong> <span class="font-medium">{{ modalData.order.productCategory }}</span></div>
+                  <div><strong>Seat Configuration:</strong> {{ modalData.order.seatConfig }}</div>
+                  <div><strong>Traffic Source:</strong> {{ modalData.order.trafficSource }}</div>
+                  <div v-if="modalData.order.extraDetails" class="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-lg text-amber-900 dark:text-amber-200">
+                    <strong>Extra Fabric/Specs:</strong> {{ modalData.order.extraDetails }}
+                  </div>
+                  <div class="pt-1.5 border-t border-slate-200 dark:border-slate-700 text-[11px] flex justify-between items-center">
+                    <span>Total Amount BDT:</span>
+                    <span class="text-base font-black text-slate-900 dark:text-slate-100">{{ formatBDT(modalData.order.totalAmount) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ORDER AUDIT LOGS -->
+              <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl space-y-1.5 mt-3">
+                <div class="font-bold text-slate-900 dark:text-slate-100 text-xs border-b border-slate-200 dark:border-slate-700 pb-1 mb-2">
+                  📝 Order Audit Logs
+                </div>
+                <div v-if="orderLogs.filter(l => l.orderId === modalData.order.id).length > 0" class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  <div v-for="log in orderLogs.filter(l => l.orderId === modalData.order.id).reverse()" :key="log.id" class="flex items-start gap-2 text-[10px] bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div class="w-2 h-2 rounded-full mt-1 shrink-0" :class="log.action === 'Order Voided' ? 'bg-red-500' : 'bg-indigo-500'"></div>
+                    <div>
+                      <div class="font-bold text-slate-700 dark:text-slate-300">
+                        {{ log.action }} <span class="font-normal text-slate-500">by {{ log.user }}</span>
+                      </div>
+                      <div class="text-slate-600 dark:text-slate-400 mt-0.5">{{ log.details }}</div>
+                      <div class="text-slate-400 font-mono text-[9px] mt-0.5">{{ log.timestamp }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-[10px] text-slate-500 italic p-2 text-center bg-white dark:bg-slate-900 rounded-lg">
+                  No logs found for this order.
+                </div>
+              </div>
+
+              <!-- MODAL ACTIONS FOOTER -->
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button @click="closeModal" type="button" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all text-xs">
+                  ✕ Close
+                </button>
+
+                <div class="flex items-center gap-2">
+                  <button @click="openCourierModal(modalData.order)" type="button" class="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl font-bold transition-all text-xs flex items-center gap-1">
+                    🚚 Courier Track
+                  </button>
+
+                  <button @click="openDispatchModal(modalData.order)" type="button" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all text-xs flex items-center gap-1">
+                    🚀 WhatsApp Dispatch
+                  </button>
+
+                  <button @click="openEditOrderModal(modalData.order)" type="button" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-extrabold shadow-md shadow-indigo-600/20 transition-all text-xs flex items-center gap-1">
+                    ✏️ Edit Order
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            
+            <!-- VIEW BILL MODAL -->
+            <div v-if="activeModal === 'viewBillModal'" class="space-y-4 text-xs">
+              <div class="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900 p-4 rounded-xl flex items-center justify-between">
+                <div>
+                  <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wide">Factory</div>
+                  <div class="text-lg font-black text-slate-900 dark:text-slate-100">{{ getFactoryName(modalData.bill.factoryId) }}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wide">Date</div>
+                  <div class="text-sm font-black text-slate-900 dark:text-slate-100">{{ modalData.bill.date }}</div>
+                </div>
+              </div>
+              
+              <div class="flex items-center justify-between">
+                <div class="text-[10px] text-slate-500 font-bold uppercase">Total Bill Amount</div>
+                <div class="text-xl font-black text-emerald-600 dark:text-emerald-400">{{ formatBDT(modalData.bill.amount) }}</div>
+              </div>
+              
+              <div v-if="modalData.bill.notes" class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Notes</span>
+                <p class="text-slate-700 dark:text-slate-300 italic">"{{ modalData.bill.notes }}"</p>
+              </div>
+              
+              <div v-if="modalData.bill.socialProofUrl" class="space-y-1">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block">Bill Photo</span>
+                <img :src="modalData.bill.socialProofUrl" class="w-full max-h-48 object-contain rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-950" />
+              </div>
+              
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] text-slate-500 font-bold uppercase">Attached Orders ({{ (modalData.bill.linkedOrderIds || []).length }})</span>
+                </div>
+                <div class="max-h-60 overflow-y-auto space-y-2 pr-1">
+                  <div v-for="id in (modalData.bill.linkedOrderIds || [])" :key="id" class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex flex-col gap-1">
+                    <template v-if="getLinkedOrderDetails(id)">
+                      <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-900 dark:text-slate-100">{{ id }}</span>
+                        <span class="text-[10px] font-semibold" :class="getLinkedOrderDetails(id).deletedAt ? 'text-rose-500' : 'text-slate-500'">
+                          {{ getLinkedOrderDetails(id).deletedAt ? 'Voided' : getLinkedOrderDetails(id).status }}
+                        </span>
+                      </div>
+                      <div class="text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                        <span>{{ getLinkedOrderDetails(id).customerName }}</span>
+                        <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ formatBDT(getLinkedOrderDetails(id).totalAmount) }}</span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <span class="text-slate-500 italic">Order {{ id }} not found (permanently deleted)</span>
+                    </template>
+                  </div>
+                  <div v-if="!(modalData.bill.linkedOrderIds || []).length" class="p-4 text-center text-slate-400 italic bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                    No orders linked to this bill.
+                  </div>
+                </div>
+              </div>
+              
+              <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                <button @click="closeModal" type="button" class="px-5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all">Close</button>
+              </div>
+            </div>
+
+            <!-- EDIT ORDER MODAL CONTENT -->
+            <div v-if="activeModal === 'editOrder'" class="space-y-4 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer Name</label>
+                  <input v-model="modalData.order.customerName" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer Phone</label>
+                  <input v-model="modalData.order.customerPhone" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Shipping Address</label>
+                <textarea v-model="modalData.order.customerAddress" rows="2" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Consignment No (CN Number)</label>
+                  <input v-model="modalData.order.cnNumber" type="text" placeholder="e.g. CN-882049" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-mono text-indigo-700 dark:text-indigo-400 focus:outline-none" />
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Factory Invoice No</label>
+                  <input v-model="modalData.order.invoiceNumber" type="text" placeholder="e.g. INV-2026-041" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-mono text-slate-900 dark:text-slate-100 focus:outline-none" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Assign Factory Tag</label>
+                  <select v-model="modalData.order.factoryTag" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-bold text-slate-900 dark:text-slate-100 focus:outline-none" :disabled="currentUser.role !== 'admin'">
+                    <option value="">-- No Factory Assigned --</option>
+                    <option v-for="f in factories" :key="f.id" :value="f.name">{{ f.name }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Pipeline Status
+                    <span v-if="currentUser.role === 'seller'" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">(One-way forward transition)</span>
+                  </label>
+                  <select v-model="modalData.order.status" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-bold text-slate-900 dark:text-slate-100 focus:outline-none">
+                    <option v-for="s in (currentUser.role === 'admin' ? pipelineStages : getAllowedStatusesForUser(modalData.order.status))" :key="s" :value="s">{{ s }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- HOST ATTACHMENTS MANAGER FOR ORDER EDIT (3 SEPARATE FOLDERS) -->
+              <div class="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    🗂️ Host Media Attachments (Separated Folders)
+                  </div>
+                  <span class="text-[9px] font-mono text-indigo-600 dark:text-indigo-400">./photos | ./collages | ./screenshots</span>
+                </div>
+
+                <!-- 1. Collage (collages/) -->
+                <div class="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-800 dark:text-slate-200 text-[11px]">🖼️ Product Collage (<code class="text-indigo-600 dark:text-indigo-400 font-mono text-[10px]">collages/</code>)</span>
+                    <span v-if="selectedCollageTile === 'modal'" class="px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[8px] font-bold animate-pulse">Ready to Paste</span>
+                    <span v-if="modalData.order.collagePhotoUrl" class="text-[9px] text-emerald-600 font-bold ml-auto">Attached</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <div @click="selectCollageTile('modal')"
+                         tabindex="0"
+                         @focus="selectCollageTile('modal')"
+                         @paste="handleCollagePaste($event, modalData.order)"
+                         @dragover.prevent
+                         @drop="handleCollageDrop($event, modalData.order)"
+                         :class="selectedCollageTile === 'modal' ? 'border-indigo-600 bg-indigo-50/90 dark:bg-indigo-950/80 ring-2 ring-indigo-500/30' : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40'"
+                         class="p-2 border border-dashed rounded text-center cursor-pointer transition-all flex items-center justify-between gap-2 flex-1">
+                      <input type="file" ref="modalCollageInput" accept="image/*" @change="handleCollageFileUpload($event, modalData.order)" class="hidden" />
+                      <span class="text-[10px] text-slate-600 dark:text-slate-300">Click & press <kbd class="bg-slate-200 dark:bg-slate-700 px-1 rounded">Ctrl+V</kbd> to paste collage</span>
+                      <button type="button" @click.stop="$refs.modalCollageInput.click()" class="px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-indigo-600 text-[10px] font-bold rounded">Browse</button>
+                    </div>
+                  </div>
+                  <div v-if="modalData.order.collagePhotoUrl" class="flex items-center justify-between text-[10px] text-indigo-700 dark:text-indigo-300 font-mono pt-1">
+                    <span class="truncate max-w-[200px]">📁 {{ modalData.order.collagePhotoFileName || 'collages/collage.jpg' }}</span>
+                    <div class="flex items-center gap-1">
+                      <button type="button" @click="saveMediaToHostDisk(modalData.order.collagePhotoUrl, modalData.order.collagePhotoFileName || 'collages/collage.jpg')" class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-bold hover:bg-indigo-50">💾 Save</button>
+                      <button type="button" @click="copyHostRelativePath(modalData.order.collagePhotoFileName || 'collages/collage.jpg')" class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-bold">📋 Copy</button>
+                      <button type="button" @click="modalData.order.collagePhotoUrl = ''; modalData.order.collagePhotoFileName = '';" class="text-rose-500 font-bold px-1">✕</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2. Screenshot (screenshots/) -->
+                <div class="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-800 dark:text-slate-200 text-[11px]">💬 Chat Screenshot Proof (<code class="text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">screenshots/</code>)</span>
+                    <span v-if="selectedProofTile === 'modal'" class="px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[8px] font-bold animate-pulse">Ready to Paste</span>
+                  </div>
+                  <div @click="selectProofTile('modal')"
+                       tabindex="0"
+                       @focus="selectProofTile('modal')"
+                       @paste="handleProofPaste($event, modalData.order)"
+                       @dragover.prevent
+                       @drop="handleProofDrop($event, modalData.order)"
+                       :class="selectedProofTile === 'modal' ? 'border-indigo-600 bg-indigo-50/90 dark:bg-indigo-950/80 ring-2 ring-indigo-500/30' : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40'"
+                       class="p-2 border border-dashed rounded text-center cursor-pointer transition-all flex items-center justify-between gap-2">
+                    <input type="file" ref="modalProofInput" accept="image/*" @change="handleProofFileUpload($event, modalData.order)" class="hidden" />
+                    <span class="text-[10px] text-slate-600 dark:text-slate-300">Click & press <kbd class="bg-slate-200 dark:bg-slate-700 px-1 rounded">Ctrl+V</kbd> to paste screenshot</span>
+                    <button type="button" @click.stop="$refs.modalProofInput.click()" class="px-2 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-indigo-600 text-[10px] font-bold rounded">Browse</button>
+                  </div>
+                  <div v-if="modalData.order.socialProofUrl" class="flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-400 font-mono pt-1">
+                    <span class="truncate max-w-[200px]">📁 {{ modalData.order.socialProofFileName || 'screenshots/proof.png' }}</span>
+                    <div class="flex items-center gap-1">
+                      <button type="button" @click="saveMediaToHostDisk(modalData.order.socialProofUrl, modalData.order.socialProofFileName || 'screenshots/proof.png')" class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-bold hover:bg-emerald-50">💾 Save</button>
+                      <button type="button" @click="copyHostRelativePath(modalData.order.socialProofFileName || 'screenshots/proof.png')" class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-bold">📋 Copy</button>
+                      <button type="button" @click="modalData.order.socialProofUrl = ''; modalData.order.socialProofFileName = '';" class="text-rose-500 font-bold px-1">✕</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Extra Design & Fabric Specifications</label>
+                <textarea v-model="modalData.order.extraDetails" rows="2" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none"></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Sale Price (BDT)</label>
+                  <input v-model.number="modalData.order.saleAmount" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none" />
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Delivery Charge (BDT)</label>
+                  <input v-model.number="modalData.order.deliveryCharge" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none" />
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 pt-2">
+                <input v-model="modalData.order.urgent" type="checkbox" id="modal-urgent" class="rounded text-rose-600" />
+                <label for="modal-urgent" class="font-bold text-rose-600 dark:text-rose-400 cursor-pointer">Mark as High-Alert Urgent Order</label>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
+                <button @click="closeModal" type="button" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all text-xs">
+                  ✕ Close / Cancel
+                </button>
+                <div class="flex items-center gap-2">
+                  <button v-if="currentUser.role === 'admin'" @click="confirmVoidOrder(modalData.order)" type="button" class="px-4 py-2.5 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 hover:text-rose-700 text-rose-600 dark:text-rose-400 rounded-xl font-bold transition-all text-xs border border-rose-200 dark:border-rose-900">
+                    🗑️ Delete Order
+                  </button>
+                  <button @click="saveEditedOrder" type="button" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-extrabold shadow-md shadow-indigo-600/20 transition-all text-xs flex items-center gap-1.5">
+                    <span>💾 Save Changes</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ADD / EDIT FACTORY MODAL -->
+            <div v-if="activeModal === 'factoryModal'" class="space-y-4 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Factory Name</label>
+                <input v-model="modalData.factory.name" type="text" placeholder="e.g. Apex Crafting Hub" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-bold text-slate-900 dark:text-slate-100 focus:outline-none" />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Direct Phone / WhatsApp Number</label>
+                  <input v-model="modalData.factory.phone" type="text" placeholder="01711002233" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none" />
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Fabric Quality Rating (1-5)</label>
+                  <select v-model.number="modalData.factory.fabricQuality" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-bold text-amber-600 dark:text-amber-400 focus:outline-none">
+                    <option :value="5">5 Stars (Premium Heavy Velvet)</option>
+                    <option :value="4">4 Stars (High Standard Linen)</option>
+                    <option :value="3">3 Stars (Standard Commercial)</option>
+                    <option :value="2">2 Stars (Budget Grade)</option>
+                    <option :value="1">1 Star (Basic Grade)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">WhatsApp Group Link</label>
+                <input v-model="modalData.factory.waGroupLink" type="url" placeholder="https://chat.whatsapp.com/..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none" />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Fabric Stock Status</label>
+                  <select v-model="modalData.factory.stockStatus" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-bold text-slate-900 dark:text-slate-100 focus:outline-none">
+                    <option value="In Stock">In Stock (Full Supply)</option>
+                    <option value="Low Stock">Low Stock (Limited Colors)</option>
+                    <option value="Out of Stock">Out of Stock (Restocking)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Base Factory Price (BDT)</label>
+                  <input v-model.number="modalData.factory.baseWholesaleCost" type="number" placeholder="42000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-bold text-slate-900 dark:text-slate-100 focus:outline-none" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Factory Notes / Specialities</label>
+                <textarea v-model="modalData.factory.notes" rows="2" placeholder="e.g. Master craftsman for curved Chesterfield sectional sofas" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none"></textarea>
+              </div>
+
+              <div class="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button @click="closeModal" type="button" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all text-xs">
+                  ✕ Close / Cancel
+                </button>
+                <button @click="saveFactoryModal" type="button" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all text-xs">
+                  Save Factory
+                </button>
+              </div>
+            </div>
+
+            <!-- WHATSAPP DISPATCH MODAL -->
+            <div v-if="activeModal === 'dispatchModal'" class="space-y-4 text-xs">
+              <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Select factory and review automatically compiled WhatsApp Business order summary:
+              </p>
+
+              <div>
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Target Factory Destination</label>
+                <select v-model="modalData.selectedFactoryId" @change="onDispatchFactoryChange" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-bold text-indigo-700 dark:text-indigo-400 focus:outline-none">
+                  <option v-for="f in rankedFactories" :key="f.id" :value="f.id">
+                    {{ f.name }} (Rank #{{ rankedFactories.indexOf(f)+1 }} | Score: {{ f.totalScore }} pts | {{ f.pendingCount }} Pending)
+                  </option>
+                </select>
+              </div>
+
+              <!-- Compiled WhatsApp Message Preview -->
+              <div>
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">WhatsApp Message Payload Preview</label>
+                <textarea :value="getWhatsAppPayloadText(modalData.order, modalData.selectedFactoryId)" rows="6" readonly
+                          class="w-full bg-emerald-950 text-emerald-300 font-mono text-[11px] border border-emerald-800 p-3 rounded-xl focus:outline-none"></textarea>
+              </div>
+
+              <div v-if="modalData.order.collagePhotoUrl" class="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center gap-3">
+                <img :src="modalData.order.collagePhotoUrl" class="w-12 h-12 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                <div>
+                  <div class="font-bold text-slate-800 dark:text-slate-200">Collage Photo Link Attached</div>
+                  <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold truncate max-w-xs">{{ modalData.order.collagePhotoUrl }}</div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button @click="closeModal" type="button" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all text-xs">
+                  ✕ Close / Cancel
+                </button>
+                <button @click="executeWhatsAppDispatch" type="button" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 text-xs">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                  <span>Submit & Open WhatsApp</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- COURIER & FULFILLMENT DISPATCH HUB (OFFLINE LAN) -->
+            <div v-if="activeModal === 'courierModal'" class="space-y-4 text-xs">
+              <div class="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900 p-4 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="font-bold text-indigo-900 dark:text-indigo-200 text-sm">Order #{{ modalData.order.id }} Fulfillment Hub</div>
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold border" :class="getStatusStyle(modalData.order.status)">
+                    {{ modalData.order.status }}
+                  </span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 dark:text-slate-300 pt-1 border-t border-indigo-100/50 dark:border-indigo-900/50">
+                  <div>Customer: <strong class="text-slate-900 dark:text-slate-100">{{ modalData.order.customerName }}</strong></div>
+                  <div>Phone: <strong class="text-slate-900 dark:text-slate-100">{{ modalData.order.customerPhone }}</strong></div>
+                  <div>Method: <strong class="text-slate-900 dark:text-slate-100">{{ modalData.order.fulfillmentMethod }}</strong></div>
+                  <div>Total Collectible: <strong class="text-emerald-600 dark:text-emerald-400">{{ formatBDT(modalData.order.totalAmount) }}</strong></div>
+                </div>
+                <div class="text-slate-600 dark:text-slate-300">
+                  Address: <span class="font-medium text-slate-800 dark:text-slate-200">{{ modalData.order.customerAddress }}</span>
+                </div>
+              </div>
+
+              <!-- Consignment Details -->
+              <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide">Consignment Number (CN / Tracking ID)</label>
+                    <div class="text-sm font-mono font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
+                      {{ modalData.order.cnNumber || 'No CN assigned yet' }}
+                    </div>
+                  </div>
+                  <button v-if="modalData.order.cnNumber" @click="copyConsignmentNumber(modalData.order.cnNumber)" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 self-start">
+                    📋 Copy CN
+                  </button>
+                </div>
+
+                <div v-if="modalData.order.invoiceNumber" class="pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <span class="text-[10px] font-bold text-slate-500 uppercase">Factory Invoice: </span>
+                  <span class="font-mono font-bold text-slate-800 dark:text-slate-200">{{ modalData.order.invoiceNumber }}</span>
+                </div>
+              </div>
+
+              <!-- Fast Status Update -->
+              <div class="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <label class="block font-bold text-slate-800 dark:text-slate-200">Update Delivery / Dispatch Stage</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <select v-model="modalData.newStatus" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-bold text-slate-900 dark:text-slate-100 focus:outline-none">
+                    <option v-for="s in pipelineStages" :key="s" :value="s">{{ s }}</option>
+                  </select>
+                  <button @click="updateCourierStatus" type="button" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-1.5">
+                    <span>✓ Update Stage</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button @click="closeModal" type="button" class="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all text-xs">
+                  ✕ Close Hub
+                </button>
+              </div>
+            </div>
+
+            <!-- PHOTO LIGHTBOX MODAL -->
+            <div v-if="activeModal === 'photoModal'" class="space-y-4 text-xs text-center">
+              <div class="max-h-96 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-950 flex items-center justify-center p-2">
+                <img :src="modalData.url" class="max-h-80 object-contain rounded-lg" />
+              </div>
+              <div class="text-xs text-slate-500 dark:text-slate-400 font-mono truncate">{{ modalData.url }}</div>
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button @click="closeModal" type="button" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all text-xs">
+                  ✕ Close Lightbox
+                </button>
+                <div class="flex items-center gap-2">
+                  <button type="button" @click="saveMediaToHostDisk(modalData.url, modalData.title.toLowerCase().replace(/[^a-z0-9]/g, '_') + '.jpg')" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-xs flex items-center gap-1">
+                    💾 Save to Host Folder
+                  </button>
+                  <a :href="modalData.url" target="_blank" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold inline-block text-xs">
+                    Open Original ↗
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <!-- ADD / EDIT USER MODAL -->
+            <div v-if="activeModal === 'userModal'" class="space-y-4 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
+                <input v-model="modalData.user.name" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none" />
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Username</label>
+                  <input v-model="modalData.user.username" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none" />
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
+                  <input v-model="modalData.user.password" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Role</label>
+                <select v-model="modalData.user.role" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-semibold text-slate-900 dark:text-slate-100 focus:outline-none">
+                  <option value="seller">Seller</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div v-if="modalData.user.role === 'seller'">
+                <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Monthly Target Goal (BDT)</label>
+                <input v-model.number="modalData.user.target" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl font-bold text-indigo-600 dark:text-indigo-400 focus:outline-none" />
+              </div>
+
+              <div class="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button @click="closeModal" type="button" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all text-xs">
+                  ✕ Close / Cancel
+                </button>
+                <button @click="saveUserModal" type="button" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold text-xs">
+                  Save User
+                </button>
+              </div>
+            </div>
+
+            <!-- CONFIRM VOID MODAL -->
+            <div v-if="activeModal === 'confirmVoid'" class="space-y-4 text-xs">
+              <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Are you sure you want to void order <strong class="text-slate-900 dark:text-slate-100">{{ modalData.order.id }}</strong>? This will permanently wipe the record from persistent memory.
+              </p>
+              <div class="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button @click="closeModal" type="button" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-all text-xs">
+                  ✕ Cancel
+                </button>
+                <button @click="executeVoidOrder" type="button" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-semibold text-xs">
+                  Void Order
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </transition>
+
+  </div>
+
+  <!-- VUE 3 COMPOSITION / OPTIONS SCRIPT -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
